@@ -16,9 +16,8 @@ jobs:
         flutter-version: '2.2.1'
     - run: flutter pub get
     - run: flutter build apk --debug
- upload_artifacts:
-   name: Upload APK
-   uses: actions/upload-artifact@v2
-   with:
-    name: Release Artifact
-    path: build/app/outputs/flutter-apk/*.apk
+    
+    - uses: actions/upload-artifact@v2.3.1
+      with:
+        name: artifact
+        path: build/app/outputs/flutter-apk/*.apk
