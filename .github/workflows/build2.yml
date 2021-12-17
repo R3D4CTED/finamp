@@ -19,5 +19,5 @@ jobs:
     
     - uses: actions/upload-artifact@v2.3.1
       with:
-        name: artifact
+        name: finamp_apk
         path: build/app/outputs/flutter-apk/*.apk
