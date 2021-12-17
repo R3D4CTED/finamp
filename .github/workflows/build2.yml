@@ -3,7 +3,7 @@ name: Build2
 on: workflow_dispatch
 
 jobs:
-  build-android2:
+ build-android2:
     name: Build for Android v2
     runs-on: ubuntu-latest
     steps:
@@ -16,7 +16,14 @@ jobs:
         flutter-version: '2.2.1'
     - run: flutter pub get
     - run: flutter build apk --debug
-    - uses: actions/upload-artifact@v2
-      with:
-       name: finamp-debug.apk
-       path: build/app/output
+ upload_artifacts:
+   name: Upload APK
+   uses: actions/upload-artifact@v2
+   with:
+    name: Release Artifact
+    path: build/app/outputs/flutter-apk/*.apk
+    
+    
+    
+  
+    
