@@ -22,8 +22,3 @@ jobs:
    with:
     name: Release Artifact
     path: build/app/outputs/flutter-apk/*.apk
-    
-    
-    
-  
-    
