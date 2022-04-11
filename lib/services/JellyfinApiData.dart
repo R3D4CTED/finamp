@@ -28,7 +28,6 @@ class JellyfinApiData {
 
   /// Saves a new user to the Hive box and sets the CurrentUserId.
   Future<void> saveUser(FinampUser newUser) async {
-    print("Saving new user");
     await Future.wait([
       _finampUserBox.put(newUser.id, newUser),
       _currentUserIdBox.put("CurrentUserId", newUser.id),
@@ -90,8 +89,6 @@ class JellyfinApiData {
     if (parentItem?.type == "Playlist") {
       response = await jellyfinApi.getPlaylistItems(
         playlistId: parentItem!.id,
-        // We'll be logged in to see playlists, so the null checks should be
-        // fine.
         userId: currentUser!.id,
         parentId: parentItem.id,
         includeItemTypes: includeItemTypes,
@@ -108,6 +105,7 @@ class JellyfinApiData {
         filters: filters,
         startIndex: startIndex,
         limit: limit,
+        userId: currentUser!.id,
       );
     } else if (parentItem?.type == "MusicArtist") {
       // For getting the children of artists, we need to use albumArtistIds
@@ -397,43 +395,31 @@ class JellyfinApiData {
     int? maxWidth,
     int? maxHeight,
     int quality = 90,
+    String format = "jpg",
   }) {
-    final imageId = getImageId(item);
-
-    if (imageId != null) {
+    if (item.imageId != null) {
       final parsedBaseUrl = Uri.parse(currentUser!.baseUrl);
-
+      List<String> builtPath =
+          new List<String>.from(parsedBaseUrl.pathSegments);
+      builtPath.addAll([
+        "Items",
+        item.imageId!,
+        "Images",
+        "Primary",
+      ]);
       return Uri(
           host: parsedBaseUrl.host,
           port: parsedBaseUrl.port,
           scheme: parsedBaseUrl.scheme,
-          pathSegments: [
-            "Items",
-            imageId,
-            "Images",
-            "Primary",
-          ],
+          pathSegments: builtPath,
           queryParameters: {
-            "format": "jpg",
+            "format": format,
             "quality": quality.toString(),
             if (maxWidth != null) "MaxWidth": maxWidth.toString(),
             if (maxHeight != null) "MaxHeight": maxHeight.toString(),
           });
     }
-  }
 
-  /// Gets the image id of a given item. If the item has its own image, it will
-  /// return the item id. Otherwise, if the item's parent has an image ID, it
-  /// returns that ID. Otherwise, if the item is an album and has an album ID,
-  /// it will return that. If the item meets none of these conditions, this
-  /// function will return null.
-  String? getImageId(BaseItemDto item) {
-    if (item.imageTags?.containsKey("Primary") == true) {
-      return item.id;
-    } else if (item.parentPrimaryImageItemId != null) {
-      return item.parentPrimaryImageItemId;
-    } else if (item.albumId != null && item.albumPrimaryImageTag != null) {
-      return item.albumId;
-    }
+    return null;
   }
 }

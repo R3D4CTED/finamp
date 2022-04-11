@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:device_info/device_info.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:finamp/services/DownloadsHelper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:logging/logging.dart';
 
 import 'JellyfinApiData.dart';
-import 'DownloadsHelper.dart';
 import 'FinampSettingsHelper.dart';
 import '../models/JellyfinModels.dart';
 
@@ -204,10 +204,21 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler {
             : null,
       );
 
-      await _player.setAudioSource(
-        _queueAudioSource,
-        initialIndex: nextInitialIndex,
-      );
+      try {
+        await _player.setAudioSource(
+          _queueAudioSource,
+          initialIndex: nextInitialIndex,
+        );
+      } on PlayerException catch (e) {
+        _audioServiceBackgroundTaskLogger
+            .severe("Player error code ${e.code}: ${e.message}");
+      } on PlayerInterruptedException catch (e) {
+        _audioServiceBackgroundTaskLogger
+            .warning("Player interrupted: ${e.message}");
+      } catch (e) {
+        _audioServiceBackgroundTaskLogger
+            .severe("Player error ${e.toString()}");
+      }
       queue.add(_queue);
 
       // Sets the media item for the new queue. This will be whatever is
@@ -487,7 +498,7 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler {
 
       // Path verification and stuff is done in AudioServiceHelper, so this path
       // should be valid.
-      return AudioSource.uri(Uri.file(downloadedSong.path));
+      return AudioSource.uri(Uri.file(downloadedSong.file.path));
     }
   }
 
@@ -509,11 +520,18 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler {
 
     final parsedBaseUrl = Uri.parse(_jellyfinApiData.currentUser!.baseUrl);
 
-    return Uri(
+    List<String> builtPath = new List<String>.from(parsedBaseUrl.pathSegments);
+    builtPath.addAll([
+      "Audio",
+      mediaItem.extras!["itemJson"]["Id"],
+      "universal",
+    ]);
+
+    var x = Uri(
       host: parsedBaseUrl.host,
       port: parsedBaseUrl.port,
       scheme: parsedBaseUrl.scheme,
-      pathSegments: ["Audio", mediaItem.extras!["itemJson"]["Id"], "universal"],
+      pathSegments: builtPath,
       queryParameters: {
         "UserId": _jellyfinApiData.currentUser!.id,
         "DeviceId":
@@ -531,6 +549,8 @@ class MusicPlayerBackgroundTask extends BaseAudioHandler {
         "ApiKey": _jellyfinApiData.currentUser!.accessToken,
       },
     );
+
+    return x;
   }
 }
 

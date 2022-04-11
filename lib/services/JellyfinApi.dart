@@ -1,9 +1,9 @@
 import 'dart:io' show Platform;
 
 import 'package:chopper/chopper.dart';
-import 'package:device_info/device_info.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:get_it/get_it.dart';
-import 'package:package_info/package_info.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/JellyfinModels.dart';
 import 'JellyfinApiData.dart';
@@ -228,8 +228,8 @@ abstract class JellyfinApi extends ChopperService {
     /// Sort Order - Ascending,Descending.
     @Query("SortOrder") String? sortOrder,
     @Query("Fields") String? fields = defaultFields,
-    @Query("searchTerm") String? searchTerm,
-    @Query("enableUserData") bool enableUserData = true,
+    @Query("SearchTerm") String? searchTerm,
+    @Query("EnableUserData") bool enableUserData = true,
 
     /// Items Enum: "IsFolder" "IsNotFolder" "IsUnplayed" "IsPlayed"
     /// "IsFavorite" "IsResumable" "Likes" "Dislikes" "IsFavoriteOrLikes"
@@ -242,6 +242,10 @@ abstract class JellyfinApi extends ChopperService {
 
     /// Optional. The maximum number of records to return.
     @Query("Limit") int? limit,
+
+    /// User id. Technically nullable in the Jellyfin API docs, but getting
+    /// favourited artists will break if this is not given.
+    @Query("UserId") required String userId,
   });
 
   /// Gets all genres from a given item, folder, or the entire library.
@@ -337,7 +341,7 @@ abstract class JellyfinApi extends ChopperService {
           JellyfinApiData jellyfinApiData = GetIt.instance<JellyfinApiData>();
 
           String authHeader = await getAuthHeader();
-          String? tokenHeader = getTokenHeader();
+          String? tokenHeader = jellyfinApiData.getTokenHeader();
 
           // If baseUrlTemp is null, use the baseUrl of the current user.
           // If baseUrlTemp is set, we're setting up a new user and should use it instead.
@@ -398,7 +402,11 @@ Future<String> getAuthHeader() async {
     authHeader = authHeader + 'DeviceId="${androidDeviceInfo.androidId}", ';
   } else if (Platform.isIOS) {
     IosDeviceInfo iosDeviceInfo = await deviceInfo.iosInfo;
-    authHeader = authHeader + 'Device="${iosDeviceInfo.utsname.machine}", ';
+    // iOS uses a fancy apostrophe which breaks headers because ASCII, so we
+    // manually replace it. Think Different™️
+    // TODO: Make something to properly sanitise this to ASCII
+    authHeader =
+        authHeader + 'Device="${iosDeviceInfo.name?.replaceAll("’", "'")}", ';
     authHeader =
         authHeader + 'DeviceId="${iosDeviceInfo.identifierForVendor}", ';
   } else {
@@ -408,11 +416,4 @@ Future<String> getAuthHeader() async {
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
   authHeader = authHeader + 'Version="${packageInfo.version}"';
   return authHeader;
-}
-
-/// Creates the X-Emby-Token header
-String? getTokenHeader() {
-  // TODO: Why do we have two "get token header" functions?
-  JellyfinApiData jellyfinApiData = GetIt.instance<JellyfinApiData>();
-  return jellyfinApiData.getTokenHeader();
 }
